@@ -96,67 +96,111 @@
         }
     }
 
-    // метод для обработки состояния
+    void print_grid(const State& s, int N) {
+        cout << "Текущее состояние сетки:" << endl;
+        for (int y = 0; y < N; y++) {
+            for (int x = 0; x < N; x++) {
+                cout << ((s.grid[y] & (1 << (N-1-x))) ? " 1 " : " 0 ");
+            }
+            cout << endl;
+        }
+    }
+    
     void process_state(State& s, int N, int& best, Square* best_squares, int& best_size) {
-        if (s.count >= best) return; // текущее количество квадратов больше или равно лучшему, выход
-        
-        if (is_fully_covered(s, N)) {
-            handle_full_coverage(s, N, best, best_squares, best_size); // проверка и обрабатка полного покрытия
+        cout << "\n=== Обработка состояния ===" << endl;
+        cout << "Текущих квадратов: " << s.count << endl;
+        cout << "Покрыто площади: " << s.sum_areas << "/" << N*N << endl;
+        print_grid(s, N);
+    
+        if (s.count >= best) {
+            cout << "Пропуск - текущий результат (" << s.count << ") хуже лучшего (" << best << ")" << endl;
             return;
         }
-
+    
+        if (is_fully_covered(s, N)) {
+            cout << "!!! Найдено полное покрытие !!!" << endl;
+            handle_full_coverage(s, N, best, best_squares, best_size);
+            return;
+        }
+    
         int x, y;
-        if (s.x == -1) find_first_free_cell(s, N, x, y);    // нахождение первой свободной клетки
-        else { x = s.x; y = s.y; }                          // сохраненные координаты
-
-        const int max_w = min({N - x, N - y, N - 1});       // поиск максимального размера квадрата для размещения
-        if (max_w <= 0) return;                             // нет возможности разместить квадрат, выход
-
-        // перебор возможных размеров квадратов для размещения
+        if (s.x == -1) {
+            cout << "Поиск свободной клетки...";
+            find_first_free_cell(s, N, x, y);
+            cout << " найдено (" << x+1 << "," << y+1 << ")" << endl;
+        } else {
+            x = s.x; y = s.y;
+            cout << "Продолжение с позиции (" << x+1 << "," << y+1 << ")" << endl;
+        }
+    
+        const int max_w = min({N - x, N - y, N - 1});
+        cout << "Максимальный возможный размер квадрата: " << max_w << endl;
+    
         for (int w = s.next_w == 0 ? max_w : s.next_w; w >= 1; w--) {
-            const int mask = ((1U << w) - 1) << (N - x - w); // маска для размещения квадрата
-            bool can_place = true;                           // флаг для проверки возможности размещения
-
-            // проверка возможности размещения квадрата
+            cout << "\nПопытка разместить квадрат " << w << "x" << w 
+                 << " в (" << x+1 << "," << y+1 << ")" << endl;
+                 
+            // Проверка возможности размещения
+            bool can_place = true;
+            const int mask = ((1U << w) - 1) << (N - x - w);
             for (int dy = 0; dy < w; dy++) {
-                const int cy = y + dy;
+                int cy = y + dy;
                 if (cy >= N || (s.grid[cy] & mask)) {
-                    can_place = false; // размещение не возможно
+                    can_place = false;
                     break;
                 }
             }
-            if (!can_place) continue; // нельзя разместить, переход к следующему размеру
-
-            const int remaining = N*N - (s.sum_areas + w*w);                                                   // остаток площади
-            const int max_possible = min(static_cast<int>(max_w), static_cast<int>(sqrt(remaining)) + 1);      // максимально возможный размер
-            const int lower_bound = (remaining + max_possible*max_possible - 1) / (max_possible*max_possible); // нижняя граница
-            if (s.count + 1 + lower_bound >= best) continue; // текущее количество квадратов вместе с нижней границей больше или равно лучшему, выходим
-
-            State new_state = s;            // создание нового состояния
-            new_state.count++;              // увеличение количества квадратов
-            new_state.sum_areas += w*w;     // обновление суммы площадей
-            new_state.x = -1;               // сброс координат
+            
+            if (!can_place) {
+                cout << "Невозможно разместить - конфликт с существующими квадратами" << endl;
+                continue;
+            }
+    
+            // Расчет метрик
+            int remaining = N*N - (s.sum_areas + w*w);
+            int max_possible = min(max_w, static_cast<int>(sqrt(remaining)) + 1);
+            int lower_bound = (remaining + max_possible*max_possible - 1) / (max_possible*max_possible);
+            
+            cout << "Оставшаяся площадь: " << remaining << endl;
+            cout << "Прогноз минимальных квадратов: " << lower_bound << endl;
+            cout << "Общий прогноз: " << (s.count + 1 + lower_bound) 
+                 << " vs текущий лучший: " << best << endl;
+    
+            if (s.count + 1 + lower_bound >= best) {
+                cout << "Отсечение ветви" << endl;
+                continue;
+            }
+    
+            // Создание нового состояния
+            State new_state = s;
+            new_state.count++;
+            new_state.sum_areas += w*w;
+            new_state.x = -1;
             new_state.y = -1;
-            new_state.next_w = 0;           // сброс следующего размера квадрата
-
-            // обновление сетки
+            new_state.next_w = 0;
+    
+            // Обновление сетки
             for (int dy = 0; dy < w; dy++)
                 new_state.grid[y + dy] |= mask;
-
-            // добавление в путь информации о квадрате
-            new_state.path[new_state.current_size++] = {x + 1, y + 1, w}; 
-
-            // сохранение текущего размера для следующей итерации
+    
+            // Добавление в историю
+            new_state.path[new_state.current_size++] = {x+1, y+1, w};
+            
+            cout << "Новое состояние создано. Квадратов: " << new_state.count << endl;
+    
+            // Сохранение состояния для меньших квадратов
             if (w > 1) {
-                State continue_state = s;       // сохранение текущеего состояния
-                continue_state.x = x;           // сохранение координат
+                State continue_state = s;
+                continue_state.x = x;
                 continue_state.y = y;
-                continue_state.next_w = w - 1;  // уменьшение размера на 1
-                push_state(continue_state);     // добавление состояния в стек
+                continue_state.next_w = w-1;
+                push_state(continue_state);
+                cout << "Добавлено состояние для размера " << w-1 << endl;
             }
-
-            push_state(new_state); // добавление нового состояния в стек
-            break;                 // обрабатка по одному размеру за шаг
+    
+            push_state(new_state);
+            cout << "Состояние добавлено в стек (всего в стеке: " << stack_ptr+1 << ")" << endl;
+            break;
         }
     }
 
@@ -186,8 +230,19 @@
         
         // обработка состояний
         while (stack_ptr >= 0) {
-            State s = pop_state();                              // извлечение состояния из стека
-            process_state(s, N, best, best_squares, best_size); // обработка состояния
+            cout << "\n======= Осталось состояний: " << stack_ptr+1 << " =======" << endl;
+            State s = pop_state();
+            process_state(s, N, best, best_squares, best_size);
+            
+            if (best < 1000) {
+                cout << "\nТекущий лучший результат: " << best << " квадратов";
+                cout << " (";
+                for (int i = 0; i < best_size; i++) {
+                    cout << best_squares[i].w;
+                    if (i != best_size-1) cout << "+";
+                }
+                cout << ")" << endl;
+            }
         }
 
         print_result(best, best_squares, best_size); // вывод результатов
