@@ -19,7 +19,7 @@ bool isLatin(const string &text) {
 vector<int> computePrefix(const string &P) {
     int m = P.size();           // размер строки P
     vector<int> prefix(m, 0);   // инициализация массива prefix нулями
-    int len = 0;                // длина предыдущего наибольшего префикса
+    int len = 0;                // длина наибольшего префикса
     int i = 1;                  // текущая позиция в строке P
     
     cout << "Вычисление префикс-функции для " << P << endl;
@@ -71,10 +71,9 @@ vector<int> KMPSearch(const string &P, const string &T) {
 
     while (i < n) {
 
-        cout << "Сравниваем T[" << i << "] = " << T[i] << " и P[" << j << "] = " << P[j] << endl;
-        
         if (P[j] == T[i]) {     // символы совпадают
-            
+
+            cout << "Сравниваем T[" << i << "] = " << T[i] << " и P[" << j << "] = " << P[j] << endl;
             cout << "  Совпадение! Увеличиваем i и j (" << i << " -> " << i+1 << ", " << j << " -> " << j+1 << ")\n";
             
             i++;                // переход к следующему символу в строке T
@@ -91,8 +90,11 @@ vector<int> KMPSearch(const string &P, const string &T) {
             cout << "  j сброшен до prefix[" << m-1 << "] = " << j << endl;
         
         } else if (i < n && P[j] != T[i]) {     // символы не совпадают
-            if (j != 0) {
 
+            cout << "Сравниваем T[" << i << "] = " << T[i] << " и P[" << j << "] = " << P[j] << endl;
+            
+            if (j != 0) {
+        
                 cout << "  Несовпадение! j меняем с " << j << " на prefix[" << j-1 << "] = " << prefix[j-1] << endl;
                 
                 j = prefix[j - 1];      // обновление j согласно prefix, если он не нулевой
