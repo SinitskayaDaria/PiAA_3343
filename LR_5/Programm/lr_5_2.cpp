@@ -146,7 +146,7 @@ void buildTrie(const vector<string>& pieces, TrieNode* root) {
 }
 
 // метод поиска шаблонов в тексте
-void search(const string& text, TrieNode* root, const vector<pair<int, int>>& pieceInfo, int patternSize, const vector<string>& pieces) {
+void search(const string& text, TrieNode* root, const vector<pair<int, int>>& pieceInfo, int patternSize, const vector<string>& pieces, const string& pattern) {
     
     int n = text.size();                // размер текста
     vector<int> count(n, 0);            // массив для подсчета вхождений шаблонов
@@ -216,36 +216,23 @@ void search(const string& text, TrieNode* root, const vector<pair<int, int>>& pi
     }
 
     // поиск пересекающихся шаблонов
-    set<string> overlappingPatterns;                        // множество для хранения пересекающихся образцов
-    sort(resultPositions.begin(), resultPositions.end());   // сортируем позиции
+    bool hasOverlap = false;
+    sort(resultPositions.begin(), resultPositions.end());
 
-    // проверка пересечений между образцами
-    for (int i = 0; i < resultPositions.size(); ++i) {
-        int startA = resultPositions[i];     // начало первого вхождения
-        int endA = startA + patternSize - 1; // конец первого вхождения
-
-        for (int j = i + 1; j < resultPositions.size(); ++j) {
-            int startB = resultPositions[j]; // начало второго вхождения
-
-            // проверка на пересечение
-            if (startB <= endA) { 
-                for (const string& p : matches[startA]) overlappingPatterns.insert(p); // сохранение образцов из первого вхождения
-                for (const string& p : matches[startB]) overlappingPatterns.insert(p); // сохранение образцов из второго вхождения
-            } else break; 
+    for (int i = 1; i < resultPositions.size(); ++i) {
+        int prevStart = resultPositions[i - 1];
+        int prevEnd = prevStart + patternSize - 1;
+        int currStart = resultPositions[i];
+        if (currStart <= prevEnd) {
+            hasOverlap = true;
+            break;
         }
     }
 
     cout << "\nОбразцы, участвующие в пересечениях:\n"; 
-    
-    // если найден только один шаблон
-    if (resultPositions.size() < 2) { 
-        for (const string& p : pieces) { // вывод всех образцов
-            cout << p << endl;
-        }
-    } else { // если есть несколько шаблонов
-        for (const string& pat : overlappingPatterns) { // перебор пересекающихся образцов
-            cout << pat << endl; 
-        }
+
+    if (hasOverlap) {
+        cout << pattern << endl;
     }
 
     cout << "\nКоличество вершин в автомате: " << totalNodes << endl; 
@@ -289,8 +276,8 @@ int main() {
     }
     cout << "\n"; 
 
-    buildTrie(pieces, root);                                // построение Trie на основе найденных частей
-    search(text, root, pieceInfo, pattern.size(), pieces);  // поиск шаблонов в тексте
+    buildTrie(pieces, root);                                         // построение Trie на основе найденных частей
+    search(text, root, pieceInfo, pattern.size(), pieces, pattern);  // поиск шаблонов в тексте
 
     return 0; 
 }
